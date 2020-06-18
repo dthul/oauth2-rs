@@ -259,8 +259,7 @@
 //!
 //! ## Example: Async/Await API
 //!
-//! Async/await support requires `rustc` 1.39.0 or newer. In order to use async/await, include
-//! `oauth2` as follows:
+//! In order to use async/await, include `oauth2` as follows:
 //!
 //! ```toml
 //! [dependencies]
@@ -528,6 +527,12 @@ mod tests;
 
 mod types;
 
+///
+/// Public re-exports of types used for HTTP client interfaces.
+///
+pub use http;
+pub use url;
+
 pub use types::{
     AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
     PkceCodeChallengeMethod, PkceCodeVerifier, RedirectUrl, RefreshToken, ResourceOwnerPassword,
@@ -673,7 +678,7 @@ where
             client_id: &self.client_id,
             extra_params: Vec::new(),
             pkce_challenge: None,
-            redirect_url: self.redirect_url.as_ref(),
+            redirect_url: self.redirect_url.as_ref().map(Cow::Borrowed),
             response_type: "code".into(),
             scopes: Vec::new(),
             state: state_fn(),
@@ -779,7 +784,7 @@ pub struct AuthorizationRequest<'a> {
     client_id: &'a ClientId,
     extra_params: Vec<(Cow<'a, str>, Cow<'a, str>)>,
     pkce_challenge: Option<PkceCodeChallenge>,
-    redirect_url: Option<&'a RedirectUrl>,
+    redirect_url: Option<Cow<'a, RedirectUrl>>,
     response_type: Cow<'a, str>,
     scopes: Vec<Cow<'a, Scope>>,
     state: CsrfToken,
@@ -843,6 +848,14 @@ impl<'a> AuthorizationRequest<'a> {
     ///
     pub fn set_pkce_challenge(mut self, pkce_code_challenge: PkceCodeChallenge) -> Self {
         self.pkce_challenge = Some(pkce_code_challenge);
+        self
+    }
+
+    ///
+    /// Overrides the `redirect_url` to the one specified.
+    ///
+    pub fn set_redirect_url(mut self, redirect_url: Cow<'a, RedirectUrl>) -> Self {
+        self.redirect_url = Some(redirect_url);
         self
     }
 

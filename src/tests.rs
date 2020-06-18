@@ -229,6 +229,28 @@ fn test_authorize_url_with_redirect_url() {
     );
 }
 
+#[test]
+fn test_authorize_url_with_redirect_url_override() {
+    let client = new_client()
+        .set_redirect_url(RedirectUrl::new("https://localhost/redirect".to_string()).unwrap());
+
+    let (url, _) = client
+        .authorize_url(|| CsrfToken::new("csrf_token".to_string()))
+        .set_redirect_url(Cow::Owned(RedirectUrl::new("https://localhost/alternative".to_string()).unwrap()))
+        .url();
+
+    assert_eq!(
+        Url::parse(
+            "https://example.com/auth?response_type=code\
+             &client_id=aaa\
+             &state=csrf_token\
+             &redirect_uri=https%3A%2F%2Flocalhost%2Falternative"
+        )
+        .unwrap(),
+        url
+    );
+}
+
 #[derive(Debug, Fail)]
 enum FakeError {
     #[fail(display = "error")]
@@ -947,7 +969,7 @@ fn test_exchange_code_with_invalid_token_type() {
                 )]
                 .into_iter()
                 .collect(),
-                body: "{\"access_token\": \"12/34\", \"token_type\": \"magic\"}"
+                body: "{\"access_token\": \"12/34\", \"token_type\": 123}"
                     .to_string()
                     .into_bytes(),
             },
@@ -957,7 +979,7 @@ fn test_exchange_code_with_invalid_token_type() {
     match token.err().unwrap() {
         RequestTokenError::Parse(json_err, _) => {
             assert_eq!(1, json_err.line());
-            assert_eq!(48, json_err.column());
+            assert_eq!(43, json_err.column());
             assert_eq!(serde_json::error::Category::Data, json_err.classify());
         }
         other => panic!("Unexpected error: {:?}", other),
@@ -1077,9 +1099,9 @@ mod colorful_extension {
     impl ColorfulErrorResponseType {
         fn to_str(&self) -> &str {
             match self {
-                &ColorfulErrorResponseType::TooDark => "too_dark",
-                &ColorfulErrorResponseType::TooLight => "too_light",
-                &ColorfulErrorResponseType::WrongColorSpace => "wrong_color_space",
+                ColorfulErrorResponseType::TooDark => "too_dark",
+                ColorfulErrorResponseType::TooLight => "too_light",
+                ColorfulErrorResponseType::WrongColorSpace => "wrong_color_space",
             }
         }
     }
